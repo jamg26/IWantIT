@@ -1,93 +1,135 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
-import { Container, Content, Text, Input, Item } from "native-base";
+import { View, FlatList, SafeAreaView } from "react-native";
+import {
+  Container,
+  Text,
+  Input,
+  Item,
+  Button,
+  Toast,
+  ListItem,
+} from "native-base";
+import firebase from "./config";
+import * as Application from "expo-application";
+import emoji from "moji-translate";
 
 const Home = (props) => {
-  const [cost, setCost] = React.useState("");
-  const [pay, setPay] = React.useState("");
+  const db = firebase.firestore();
 
-  const costHandler = (amt) => {
-    // var reg = new RegExp("^[0-9]+$");
-    // if (reg.test(amt)) return setCost(amt);
-    // if (amt === "") return setCost("");
-    // Alert.alert("Numbers only.");
-    setCost(amt);
+  const [wanted, setWanted] = React.useState([]);
+  const [inputWanted, setInputWanted] = React.useState("");
+  const [inputWantedPrice, setInputWantedPrice] = React.useState("");
+  const [success, setSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    getWanted();
+  }, []);
+
+  const textToEmoji = async (text) => {
+    return emoji.getEmojiForWord(text);
   };
 
-  const payHandler = (amt) => {
-    // var reg = new RegExp("^[0-9]+$");
-    // if (reg.test(amt)) return setPay(amt);
-    // if (amt === "") return setPay("");
-    // Alert.alert("Numbers only.");
-    setPay(amt);
+  const getWanted = async () => {
+    const wanted = await db
+      .collection(Application.androidId)
+      .orderBy("date", "desc")
+      .get();
+    let data = [];
+    wanted.forEach((doc) => {
+      data.push({ ...doc.data(), id: doc.id });
+    });
+    setWanted(data);
   };
 
-  const total = (parseFloat(cost) / parseFloat(pay)).toFixed(2);
+  const addWanted = async () => {
+    if (!inputWanted | !inputWantedPrice) return;
+    setSuccess(true);
+    const emoji = await textToEmoji(inputWanted);
+    await db
+      .collection(Application.androidId)
+      .doc()
+      .set({
+        name: `${emoji} ${inputWanted}`,
+        date: new Date(),
+        price: parseFloat(inputWantedPrice),
+      });
+    getWanted();
+    setInputWanted("");
+    setInputWantedPrice("");
+    Toast.show({
+      text: "Added",
+    });
+    setSuccess(false);
+  };
 
-  return (
-    <Container>
-      <Content style={{ margin: 10 }}>
-        <Item>
-          <Input
-            placeholder="How much does product cost?"
-            placeholderTextColor="#6b6b6b"
-            keyboardType="numeric"
-            onChangeText={costHandler}
-            value={cost.toString()}
-          />
-        </Item>
-        <Item>
-          <Input
-            placeholder="How much you would like to pay per day?"
-            placeholderTextColor="#6b6b6b"
-            keyboardType="numeric"
-            onChangeText={payHandler}
-            value={pay.toString()}
-          />
-        </Item>
+  const renderItem = ({ item }) => {
+    return (
+      <ListItem
+        button
+        onPress={() =>
+          props.navigation.navigate("Wanted", { ...item, getWanted })
+        }
+      >
         <View
           style={{
-            borderBottomColor: "black",
-            borderBottomWidth: 0,
-            paddingBottom: 20,
+            flexDirection: "row",
+            flex: 1,
+            justifyContent: "space-between",
           }}
-        />
-        {cost ? (
-          <Text style={styles.regular}>
-            Item Cost: {cost && parseFloat(cost).toFixed(2)}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontFamily: "Poppins_300Light",
+              fontWeight: "bold",
+            }}
+          >
+            {item.name}
           </Text>
-        ) : null}
-        {pay ? (
-          <Text style={styles.regular}>
-            Paying at {pay && parseFloat(pay).toFixed(2)} / day
+          <Text style={{ fontSize: 15, fontFamily: "Poppins_300Light" }}>
+            {item.price.toFixed(2)}
           </Text>
-        ) : null}
+        </View>
+      </ListItem>
+    );
+  };
 
-        {pay && cost ? (
-          total < 1 ? (
-            <Text style={styles.regular}>You can buy that item obviously.</Text>
-          ) : (
-            <Text style={styles.regular}>
-              You probably getting that item on{" "}
-              {total > 365
-                ? `${
-                    !isFinite((total / 365).toFixed(2))
-                      ? `${(total / 365).toFixed(2)} year/s GOODLUCK!`
-                      : `${(total / 365).toFixed(2)} year/s`
-                  }`
-                : `${total} day/s`}
-            </Text>
-          )
-        ) : null}
-      </Content>
-    </Container>
+  return (
+    <>
+      <Container>
+        <Item success={success}>
+          <Input
+            placeholder="Wanted"
+            onChangeText={(text) => setInputWanted(text)}
+            // placeholderTextColor="#000"
+            value={inputWanted}
+            style={{ fontFamily: "Poppins_300Light" }}
+          />
+          <Input
+            placeholder="0.00"
+            onChangeText={(text) => setInputWantedPrice(text)}
+            // placeholderTextColor="#000"
+            keyboardType="number-pad"
+            value={inputWantedPrice}
+            style={{ fontFamily: "Poppins_300Light" }}
+          />
+          <Button transparent onPress={addWanted}>
+            <Text>confirm</Text>
+          </Button>
+        </Item>
+
+        <Container>
+          <SafeAreaView>
+            <FlatList
+              data={wanted}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id}
+            />
+          </SafeAreaView>
+        </Container>
+      </Container>
+    </>
   );
 };
-
-const styles = StyleSheet.create({
-  regular: {
-    fontSize: 25,
-  },
-});
 
 export default Home;

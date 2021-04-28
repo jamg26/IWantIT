@@ -5,10 +5,23 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import Home from "./Home";
 import * as Font from "expo-font";
+import "./config.js";
+import { Root } from "native-base";
+import Wanted from "./Wanted";
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_300Light,
+} from "@expo-google-fonts/poppins";
 
 export default function App() {
   const Stack = createStackNavigator();
   const [ready, setReady] = React.useState(false);
+
+  useFonts({
+    Poppins_400Regular,
+    Poppins_300Light,
+  });
 
   React.useEffect(() => {
     const loadFont = async () => {
@@ -26,11 +39,18 @@ export default function App() {
     ready && (
       <>
         <StatusBar style="auto" />
-        <NavigationContainer>
-          <Stack.Navigator>
-            <Stack.Screen name="I Want It" component={Home} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <Root>
+          <NavigationContainer>
+            <Stack.Navigator>
+              <Stack.Screen
+                name="home"
+                component={Home}
+                options={{ title: "I Want It!" }}
+              />
+              <Stack.Screen name="Wanted" component={Wanted} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </Root>
       </>
     )
   );
